@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 
@@ -7,6 +8,7 @@ from common.csv import write_csv
 from common.tweet import Tweet
 
 CSV_PATH = os.path.join(os.getcwd(), "csv/urls.csv")
+THREAD_COUNT = None
 
 
 class BuyableTweet:
@@ -14,14 +16,14 @@ class BuyableTweet:
         self.df_list = []
         self.read_df = pd.read_csv(CSV_PATH)
         self.write_df = pd.DataFrame()
+        self.tw = Tweet()
 
     def buy_tweet(self):
-        tw = Tweet()
-        for hash_tag, url, is_buyable in zip(
-            self.read_df["ハッシュタグ"], self.read_df["URL"], self.read_df["前回購入可能か"]
-        ):
-            self.tweet_decision(hash_tag, url, int(is_buyable))
-
+        with ThreadPoolExecutor(THREAD_COUNT) as executor:
+            for hash_tag, url, is_buyable in zip(
+                self.read_df["ハッシュタグ"], self.read_df["URL"], self.read_df["前回購入可能か"]
+            ):
+                executor.submit(self.tweet_decision, hash_tag, url, int(is_buyable))
         for df_data in self.df_list:
             self.write_df = self.write_df.append(df_data, ignore_index=True)
 
@@ -31,17 +33,22 @@ class BuyableTweet:
         if "amazon" in url:
             selector = "#add-to-cart-button"
             platform = "Amazon"
-        elif "rakuten" in url:
-            selector = "#normal_basket_11235153 > tbody > tr:nth-child(3) > td > span.floatingCartSplitButtons > span > span:nth-child(2) > button > span > span"
+            title = soup.select_one("#productTitle").get_text().replace("\n", "")
+        elif "item.rakuten" in url:
+            selector = ".cart-button.add-cart.new-cart-button"
             platform = "楽天市場"
+            title = soup.select_one(".catch_copy").get_text().replace("\n", "")
+        elif "books.rakuten" in url:
+            selector = ".new_addToCart"
+            platform = "楽天ブックス"
+            title = soup.select_one("#productTitle").get_text().replace("\n", "")
         else:
             return
 
         if soup.select(selector):
             if is_buyable == 0:
                 formated_hash_tag = self.formating_hash_tag(hash_tag)
-                title = soup.select("#productTitle")[0].get_text().replace("\n", "")
-                # tw.tweet(f"＼{platform}で再入荷中／\n{title}\n{url}\n{formated_hash_tag}")
+                self.tw.tweet(f"＼{platform}で再入荷中／\n{title}\n{url}\n{formated_hash_tag}")
                 print(f"＼{platform}で再入荷中／\n{title}\n{url}\n{formated_hash_tag}")
                 new_is_buyable = 1
         else:
