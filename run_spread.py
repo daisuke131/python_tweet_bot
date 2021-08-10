@@ -67,7 +67,7 @@ class BuyableTweet:
                 if is_buyable == 1:
                     self.ws.update_cell(row_count, 4, 0)
         except Exception:
-            print("失敗")
+            print(f"{row_count}番目失敗")
             pass
 
     def formating_hash_tag(self, hash_tag: str) -> str:
