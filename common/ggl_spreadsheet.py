@@ -8,7 +8,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 load_dotenv()
 JASON_FILE_NAME = os.getenv("JASON_FILE_NAME")
-# JASON_FILE_NAME = "python-buyable-twitter-bot-0bb63e591ec9.json"
 JSON_PATH = os.path.join(os.getcwd(), JASON_FILE_NAME)
 SPREAD_SHEET_KEY = os.getenv("SPREAD_SHEET_KEY")
 
