@@ -1,36 +1,21 @@
-import os
-
-from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.webdriver.chrome.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.firefox import GeckoDriverManager
-from webdriver_manager.utils import ChromeType
 
 from common.util import fetch_user_agent
 
-load_dotenv()
-BROWSER_NAME = os.getenv("BROWSER")
-
 
 class Driver:
-    def __init__(self, headless_flg: bool):
-        self.driver = self.driver_setting(headless_flg)
+    def __init__(self, is_headless: bool = True):
+        self.driver: WebDriver = self.setting_driver(is_headless)
 
-    def driver_setting(self, headless_flg: bool):
-        user_agent_random = fetch_user_agent()
+    def setting_driver(self, is_headless: bool) -> WebDriver:
         # ドライバーの読み込み
-        if "firefox" in BROWSER_NAME:
-            options = webdriver.FirefoxOptions()
-        else:
-            options = webdriver.ChromeOptions()
-
-        # ヘッドレスモードの設定
-        if os.name == "posix" or headless_flg:  # Linux　➙　本番環境のためHeadless
-            options.add_argument("--headless")
-
-        # options.add_argument("--user-agent=" + user_agent)
-        options.add_argument("--user-agent=" + user_agent_random)
-        # self.options.add_argument('log-level=3')
+        options = webdriver.ChromeOptions()
+        if is_headless:
+            options.add_argument("--headless")  # ヘッドレスモードの設定
+        # options.add_argument("--user-agent=ここにUA情報記入") # UA情報指定
+        options.add_argument(f"--user-agent={fetch_user_agent()}")  # UA情報指定
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--ignore-ssl-errors")
         options.add_argument("--incognito")  # シークレットモードの設定を付与
@@ -46,46 +31,41 @@ class Driver:
         options.add_argument("--lang=ja")
 
         try:
-            if "firefox" in BROWSER_NAME:
-                driver = webdriver.Firefox(
-                    executable_path=GeckoDriverManager().install(), options=options
-                )
-            elif "chromium" in BROWSER_NAME:
-                driver = webdriver.Chrome(
-                    ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install(),
-                    options=options,
-                )
-            else:
-                driver = webdriver.Chrome(
-                    ChromeDriverManager().install(), options=options
-                )
+            driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
             return driver
         except Exception:
             return None
 
-    def el_selector(self, s: str):
+    def get(self, url: str) -> bool:
+        try:
+            self.driver.get(url)
+            return True
+        except Exception:
+            return False
+
+    def find_element_by_css_selector(self, s: str):
         return self.driver.find_element_by_css_selector(s)
 
-    def els_selector(self, s: str):
+    def find_elements_by_css_selector(self, s: str):
         return self.driver.find_elements_by_css_selector(s)
 
-    def el_id(self, s: str):
+    def find_element_by_id(self, s: str):
         return self.driver.find_element_by_id(s)
 
-    def els_id(self, s: str):
+    def find_elements_by_id(self, s: str):
         return self.driver.find_elements_by_id(s)
 
-    def el_class(self, s: str):
+    def find_element_by_class_name(self, s: str):
         return self.driver.find_element_by_class_name(s)
 
-    def els_class(self, s: str):
+    def find_elements_by_class_name(self, s: str):
         return self.driver.find_elements_by_class_name(s)
 
-    def el_xpath(self, s: str):
+    def find_element_by_xpath(self, s: str):
         return self.driver.find_element_by_xpath(s)
 
-    def els_xpath(self, s: str):
+    def find_elements_by_xpath(self, s: str):
         return self.driver.find_elements_by_xpath(s)
 
-    def script_click(self, s: str):
-        return self.driver.execute_script(f"document.querySelector({s}).click()")
+    def quit(self) -> None:
+        self.driver.quit()

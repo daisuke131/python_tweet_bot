@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from gspread.models import Worksheet
 
-from common.beutifulsoup import fetch_soup
+from common.driver import Driver
 from common.ggl_spreadsheet import Gspread
 from common.tweet import Tweet
 
@@ -13,6 +13,7 @@ class BuyableTweet:
     def __init__(self, ws: Worksheet) -> None:
         self.ws: Worksheet = ws
         self.tw = Tweet()
+        self.errors = []
 
     def buy_tweet(self):
         row_count = 0
@@ -35,23 +36,30 @@ class BuyableTweet:
         self, hash_tag: str, url: str, afili_url: str, is_buyable: int, row_count: int
     ) -> None:
         try:
-            soup = fetch_soup(url)
+            driver = Driver()
+            driver.get(url)
             if "amazon" in url:
                 selector = "#add-to-cart-button"
                 platform = "Amazon"
-                title = soup.select_one("#productTitle").get_text().replace("\n", "")
+                title = driver.find_element_by_css_selector(
+                    "#productTitle"
+                ).text.replace("\n", "")
             elif "item.rakuten" in url:
                 selector = ".cart-button.add-cart.new-cart-button"
                 platform = "楽天市場"
-                title = soup.select_one(".item_name > b").get_text().replace("\n", "")
+                title = driver.find_element_by_css_selector(
+                    ".item_name > b"
+                ).text.replace("\n", "")
             elif "books.rakuten" in url:
                 selector = ".new_addToCart"
                 platform = "楽天ブックス"
-                title = soup.select_one("#productTitle").get_text().replace("\n", "")
+                title = driver.find_element_by_css_selector(
+                    "#productTitle"
+                ).text.replace("\n", "")
             else:
                 return
 
-            if soup.select(selector):
+            if driver.find_element_by_css_selector(selector):
                 if is_buyable == 0:
                     formated_hash_tag = self.formating_hash_tag(hash_tag)
                     if formated_hash_tag:
@@ -67,8 +75,11 @@ class BuyableTweet:
                 if is_buyable == 1:
                     self.ws.update_cell(row_count, 4, 0)
         except Exception:
+            self.errors.append([f"{row_count}番目", url])
             print(f"{row_count}番目失敗")
             pass
+
+        driver.quit()
 
     def formating_hash_tag(self, hash_tag: str) -> str:
         hash_tag_list = hash_tag.split()
@@ -85,6 +96,8 @@ def main():
     ws: Worksheet = gs.read_sheet(0)
     bt = BuyableTweet(ws)
     bt.buy_tweet()
+    for error in bt.errors:
+        print(error)
 
 
 if __name__ == "__main__":

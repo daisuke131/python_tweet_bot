@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+python-buyable-twitter-bot-0bb63e591ec9.json
+.env
+.env
