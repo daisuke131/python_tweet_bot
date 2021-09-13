@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-
-from gspread.models import Worksheet
+from time import sleep
 
 from common.driver import Driver
 from common.ggl_spreadsheet import Gspread
@@ -10,15 +9,21 @@ THREAD_COUNT = None
 
 
 class BuyableTweet:
-    def __init__(self, ws: Worksheet) -> None:
-        self.ws: Worksheet = ws
+    def __init__(self) -> None:
+        self.gs = Gspread()
         self.tw = Tweet()
         self.errors = []
 
-    def buy_tweet(self):
+    def buy_tweet(self) -> None:
         row_count = 0
+        self.gs.fetch_sheet(0)
         with ThreadPoolExecutor(THREAD_COUNT) as executor:
-            for hash_tag, url, afili_url, is_buyable in self.ws.get_all_values():
+            for (
+                hash_tag,
+                url,
+                afili_url,
+                is_buyable,
+            ) in self.gs.worksheet.get_all_values():
                 row_count += 1
                 if row_count == 1:  # 一行目はカラム名なのでスルー
                     continue
@@ -38,6 +43,7 @@ class BuyableTweet:
         try:
             driver = Driver()
             driver.get(url)
+            sleep(3)
             if "amazon" in url:
                 selector = "#add-to-cart-button"
                 platform = "Amazon"
@@ -59,7 +65,7 @@ class BuyableTweet:
             else:
                 return
 
-            if driver.find_element_by_css_selector(selector):
+            if driver.find_elements_by_css_selector(selector):
                 if is_buyable == 0:
                     formated_hash_tag = self.formating_hash_tag(hash_tag)
                     if formated_hash_tag:
@@ -70,10 +76,11 @@ class BuyableTweet:
                     print(
                         f"＼{platform}で購入できます！／\n{title}\n{afili_url}{formated_hash_tag}"
                     )
-                    self.ws.update_cell(row_count, 4, 1)
+                    self.gs.update_cell(row_count, 4, 1)
             else:
-                if is_buyable == 1:
-                    self.ws.update_cell(row_count, 4, 0)
+                # if is_buyable == 1:
+                self.gs.update_cell(row_count, 4, 0)
+            print(f"{row_count}番目成功")
         except Exception:
             self.errors.append([f"{row_count}番目", url])
             print(f"{row_count}番目失敗")
@@ -90,14 +97,16 @@ class BuyableTweet:
             new_hash_tag_list.append("#" + s)
         return " ".join(new_hash_tag_list)
 
+    def output_errors(self) -> None:
+        self.gs.fetch_sheet(1)
+        for error in self.errors:
+            self.gs.append_row(error)
+
 
 def main():
-    gs = Gspread()
-    ws: Worksheet = gs.read_sheet(0)
-    bt = BuyableTweet(ws)
+    bt = BuyableTweet()
     bt.buy_tweet()
-    for error in bt.errors:
-        print(error)
+    bt.output_errors()
 
 
 if __name__ == "__main__":

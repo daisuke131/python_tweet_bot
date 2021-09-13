@@ -6,19 +6,20 @@ from dotenv import load_dotenv
 from gspread.models import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
-JASON_FILE_NAME = "python-buyable-twitter-bot-0bb63e591ec9.json"
-JSON_PATH = os.path.join(os.getcwd(), JASON_FILE_NAME)
 load_dotenv()
+JASON_FILE_NAME = os.getenv("JASON_FILE_NAME")
+# JASON_FILE_NAME = "python-buyable-twitter-bot-0bb63e591ec9.json"
+JSON_PATH = os.path.join(os.getcwd(), JASON_FILE_NAME)
 SPREAD_SHEET_KEY = os.getenv("SPREAD_SHEET_KEY")
 
 
 class Gspread:
     def __init__(self) -> None:
-        self.workbook = self.connect_gspread()
+        self.workbook = self.fetch_workbook()
         self.worksheet: Worksheet
         self.df = []
 
-    def connect_gspread(self):
+    def fetch_workbook(self):
         try:
             scope = [
                 "https://spreadsheets.google.com/feeds",
@@ -34,13 +35,19 @@ class Gspread:
             print("Googleスプレッドシートを読み込めませんでした。")
             # return None
 
-    def read_sheet(self, sheet_num: int):
+    def fetch_sheet(self, sheet_num: int):
         # 0が一枚目のシート
         self.worksheet = self.workbook.get_worksheet(sheet_num)
-        return self.worksheet
 
-    # def read_sheet(self, workbook, sheet_name: str):
+    # def fetch_sheet(self, workbook, sheet_name: str):
     #     self.worksheet = self.workbook.worksheet(sheet_name)
+
+    def append_row(self, val: list) -> None:
+        # value_input_option="USER_ENTERED"全て文字列として書き込みのを防止
+        self.worksheet.append_row(val, value_input_option="USER_ENTERED")
+
+    def update_cell(self, row_count: int, column_count: int, val):
+        self.worksheet.update_cell(row_count, column_count, val)
 
     def set_df(self):
         self.df = pd.DataFrame(self.worksheet.get_all_values())
