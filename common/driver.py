@@ -1,17 +1,15 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.webdriver import WebDriver
+from webdriver_manager.chrome import ChromeDriverManager
 
 from common.util import fetch_user_agent
-
-# from webdriver_manager.chrome import ChromeDriverManager
 
 
 class Driver:
     def __init__(self, is_headless: bool = True):
-        self.driver: WebDriver = self.setting_driver(is_headless)
+        self.driver = self.setting_driver(is_headless)
 
-    def setting_driver(self, is_headless: bool) -> WebDriver:
-        driverPath = "./chromedriver"
+    def setting_driver(self, is_headless: bool):
+        # driverPath = "./chromedriver"
         # ドライバーの読み込み
         options = webdriver.ChromeOptions()
         if is_headless:
@@ -33,7 +31,8 @@ class Driver:
         options.add_argument("--lang=ja")
 
         try:
-            driver = webdriver.Chrome(driverPath, options=options)
+            # driver = webdriver.Chrome(driverPath, options=options)
+            driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
             return driver
         except Exception:
             return None
