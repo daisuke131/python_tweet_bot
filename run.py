@@ -35,50 +35,96 @@ class BuyableTweet:
                     int(is_buyable),
                     row_count,
                 )
+        # for (
+        #     hash_tag,
+        #     url,
+        #     afili_url,
+        #     is_buyable,
+        # ) in self.gs.worksheet.get_all_values():
+        #     row_count += 1
+        #     if row_count == 1:  # 一行目はカラム名なのでスルー
+        #         continue
+        #     self.tweet_decision(
+        #         hash_tag,
+        #         url,
+        #         afili_url,
+        #         int(is_buyable),
+        #         row_count,
+        #     )
         print(row_count)
+
+    def fetch_platform(self, url: str) -> str:
+        platform: str = ""
+        if "item.rakuten" in url:
+            platform = "SP"
+        else:
+            platform = "PC"
+        return platform
+
+    def convert_class(self, class_str: str) -> str:
+        class_str = class_str.replace(" ", ".")
+        class_str = "." + class_str
+        return class_str
 
     def tweet_decision(
         self, hash_tag: str, url: str, afili_url: str, is_buyable: int, row_count: int
     ) -> None:
         try:
-            driver = Driver()
+            platform = self.fetch_platform(url=url)
+            driver = Driver(platform=platform)
             driver.get(url)
+            print(driver.driver.title)
             sleep(3)
+            is_buy: bool = False
             if "amazon" in url:
-                selector = "#add-to-cart-button"
-                platform = "Amazon"
+                target_site = "Amazon"
                 title = driver.find_element_by_css_selector(
                     "#productTitle"
                 ).text.replace("\n", "")
+                if driver.find_elements_by_css_selector("#add-to-cart-button"):
+                    is_buy = True
             elif "item.rakuten" in url:
-                selector = ".cart-button.add-cart.new-cart-button"
-                platform = "楽天市場"
+                # selector = ".cart-button.add-cart.new-cart-button"
+                target_site = "楽天市場"
+                # title = driver.find_element_by_css_selector(
+                #     ".item_name > b"
+                # ).text.replace("\n", "")
                 title = driver.find_element_by_css_selector(
-                    ".item_name > b"
+                    ".section--1LTGf"
                 ).text.replace("\n", "")
+                cls = self.convert_class(
+                    "button--3SNaj size-m--2eTK1 size-m-padding--1SMUk "
+                    + "border-radius--1ip29 block--3qHE8 type-primary--3cgWx"
+                )
+                el = driver.find_element_by_css_selector(cls)
+                if el.is_enabled():
+                    is_buy = True
+
             elif "books.rakuten" in url:
-                selector = ".new_addToCart"
-                platform = "楽天ブックス"
+                target_site = "楽天ブックス"
                 title = driver.find_element_by_css_selector(
                     "#productTitle"
                 ).text.replace("\n", "")
+                if driver.find_elements_by_css_selector(".new_addToCart"):
+                    is_buy = True
             else:
                 return
 
-            if driver.find_elements_by_css_selector(selector):
+            if is_buy:
                 if is_buyable == 0:
                     formated_hash_tag = self.formating_hash_tag(hash_tag)
                     if formated_hash_tag:
                         formated_hash_tag = "\n" + formated_hash_tag
                     self.tw.tweet(
-                        f"＼{platform}で購入できます！／\n{title}\n{afili_url}{formated_hash_tag}"
+                        f"＼{target_site}で購入できます！／\n{title}"
+                        + "\n{afili_url}{formated_hash_tag}"
                     )
                     print(
-                        f"＼{platform}で購入できます！／\n{title}\n{afili_url}{formated_hash_tag}"
+                        f"＼{target_site}で購入できます！／\n{title}"
+                        + "\n{afili_url}{formated_hash_tag}"
                     )
                     self.gs.update_cell(row_count, 4, 1)
             else:
-                # if is_buyable == 1:
                 self.gs.update_cell(row_count, 4, 0)
             print(f"{row_count}番目成功")
         except Exception:

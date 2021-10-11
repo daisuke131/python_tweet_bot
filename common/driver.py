@@ -1,22 +1,22 @@
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 
-from common.util import fetch_user_agent
-
-# from webdriver_manager.chrome import ChromeDriverManager
+from common.util import fetch_sp_user_agent, fetch_user_agent
 
 
 class Driver:
-    def __init__(self, is_headless: bool = True):
-        self.driver = self.setting_driver(is_headless)
+    def __init__(self, platform: str, is_headless: bool = True):
+        self.driver = self.setting_driver(platform, is_headless)
 
-    def setting_driver(self, is_headless: bool):
-        driverPath = "./chromedriver"
+    def setting_driver(self, platform: str, is_headless: bool):
         # ドライバーの読み込み
         options = webdriver.ChromeOptions()
         if is_headless:
             options.add_argument("--headless")  # ヘッドレスモードの設定
-        # options.add_argument("--user-agent=ここにUA情報記入") # UA情報指定
-        options.add_argument(f"--user-agent={fetch_user_agent()}")  # UA情報指定
+        if platform == "PC":
+            options.add_argument(f"--user-agent={fetch_user_agent()}")  # UA情報指定
+        elif platform == "SP":
+            options.add_argument(f"--user-agent={fetch_sp_user_agent()}")
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--ignore-ssl-errors")
         options.add_argument("--incognito")  # シークレットモードの設定を付与
@@ -32,8 +32,8 @@ class Driver:
         options.add_argument("--lang=ja")
 
         try:
-            driver = webdriver.Chrome(driverPath, options=options)
-            # driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+            # driver = webdriver.Chrome(options=options)
+            driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
             return driver
         except Exception:
             return None
