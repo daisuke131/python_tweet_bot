@@ -117,11 +117,11 @@ class BuyableTweet:
                         formated_hash_tag = "\n" + formated_hash_tag
                     self.tw.tweet(
                         f"＼{target_site}で購入できます！／\n{title}"
-                        + "\n{afili_url}{formated_hash_tag}"
+                        + f"\n{afili_url}{formated_hash_tag}"
                     )
                     print(
                         f"＼{target_site}で購入できます！／\n{title}"
-                        + "\n{afili_url}{formated_hash_tag}"
+                        + f"\n{afili_url}{formated_hash_tag}"
                     )
                     self.gs.update_cell(row_count, 4, 1)
             else:
