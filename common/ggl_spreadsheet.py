@@ -9,6 +9,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 load_dotenv()
 JASON_FILE_NAME = os.getenv("JASON_FILE_NAME")
 JSON_PATH = os.path.join(os.getcwd(), JASON_FILE_NAME)
+# デバッグ用
+# JSON_PATH = os.path.join(os.getcwd(), f"tool/{JASON_FILE_NAME}")
 SPREAD_SHEET_KEY = os.getenv("SPREAD_SHEET_KEY")
 
 
