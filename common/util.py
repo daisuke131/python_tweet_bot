@@ -47,5 +47,5 @@ def filename_creation(filename: str) -> str:
 
 
 def del_kanma(price: str) -> int:
-    price = price.replace(",", "").replace("￥", "")
+    price = price.replace(",", "").replace("￥", "").replace("円", "")
     return int(price)

@@ -1,6 +1,5 @@
 import random
 from time import sleep
-import requests
 from common.driver import Driver
 from common.ggl_spreadsheet import Gspread
 from common.tweet import Tweet
@@ -9,7 +8,7 @@ import numpy as np
 import threading
 
 
-THREAD_COUNT = 2
+THREAD_COUNT = 3
 
 class BuyableTweet:
     def __init__(self) -> None:
@@ -42,14 +41,14 @@ class BuyableTweet:
         
     def buy_tweet_detail(self, url_datas, driver) -> None:
         for (hash_tag, url, afili_url, price, is_buyable, row_count) in url_datas:
-            self.tweet_decision(hash_tag, url, afili_url, del_kanma(price), is_buyable, row_count, driver)
+            self.tweet_decision(hash_tag, url, afili_url, del_kanma(price), is_buyable, int(row_count), driver)
             
     def convert_class(self, class_str: str) -> str:
         class_str = class_str.replace(" ", ".")
         class_str = "." + class_str
         return class_str
         
-    def fetch_now_price(self, driver) -> int:
+    def fetch_amazon_now_price(self, driver) -> list:
         cls = self.convert_class("a-size-base a-color-price a-color-price")
         now_price_int: int = 0
         now_price_str: str = ""
@@ -72,6 +71,17 @@ class BuyableTweet:
             ).text
             now_price_int = del_kanma(now_price_str)
         return now_price_str, now_price_int
+        
+    def fetch_rakuten_book_now_price(self, driver) -> list:
+        now_price_int: int = 0
+        now_price_str: str = ""
+        now_price_str = "￥" + driver.find_element_by_css_selector("span.price").text.replace("円", "")
+        now_price_int = del_kanma(now_price_str)
+        return now_price_str, now_price_int
+        
+    def fetch_now_price_kanma(self, price) -> list:
+        now_price_str = "￥" + "{:,}".format(price)
+        return now_price_str, price
 
     def tweet_decision(
         self,
@@ -87,12 +97,7 @@ class BuyableTweet:
             is_buy: bool = False
             if "amazon" in url:
                 driver.get(url)
-                sleep(random.randint(3, 8))
-                # sleep(3)
-            elif "books.rakuten" in url:
-                driver.get(url)
-                sleep(random.randint(3, 15))
-            if "amazon" in url:
+                sleep(random.randint(3, 5))
                 # アクセス制限食らったらreturn
                 print(driver.driver.title)
                 if (
@@ -108,7 +113,7 @@ class BuyableTweet:
                     "#productTitle"
                     ).text.replace("\n", "")
                 # 金額取得
-                now_price_str, now_price_int = self.fetch_now_price(driver)
+                now_price_str, now_price_int = self.fetch_amazon_now_price(driver)
                 """
                 #add-to-cart-buttonと#buy-now-buttonは普通の商品
                 #one-click-buttonは本
@@ -121,11 +126,17 @@ class BuyableTweet:
                 ):
                     is_buy = True
             elif "books.rakuten" in url:
+                driver.get(url)
+                sleep(random.randint(3, 5))
                 print(driver.driver.title)
                 target_site = "楽天ブックス"
+                # タイトル取得
                 title = driver.find_element_by_css_selector(
                     "#productTitle"
                 ).text.replace("\n", "")
+                # 金額取得
+                now_price_str, now_price_int = self.fetch_rakuten_book_now_price(driver)
+                
                 if driver.find_elements_by_css_selector(".new_addToCart"):
                     is_buy = True
             else:
@@ -134,14 +145,17 @@ class BuyableTweet:
                 params = {
                     "applicationId": "1019079537947262807",
                     "format": "json",
+                    # F12押して一番下のitemidをとる~~~~~~:~~~~~~~という形
                     "itemCode": url,
                 }
                 res = requests.get(api_url, params)
+                sleep(3)
                 if not (300 > res.status_code >= 200):
                     return None
                 result = res.json()
                 title = result["Items"][0]["Item"]["itemName"]
                 print(title)
+                now_price_str, now_price_int = self.fetch_now_price_kanma(result["Items"][0]["Item"]["itemPrice"])
                 if result["Items"][0]["Item"]["availability"] == 1:
                     is_buy = True
 
@@ -170,6 +184,8 @@ class BuyableTweet:
                             f"({now_time()})\n＼{target_site}で値引きされました！／\n{title}"
                             + f"\n{now_price_str}\n{afili_url}{formated_hash_tag}"
                         )
+                        # 値引き後の金額に上書き
+                        self.gs.update_cell(row_count, 4, now_price_int)
                     # is_buyableが0ならTweet(再入荷通知)
                     if is_buyable == 0:
                         self.tw.tweet(
